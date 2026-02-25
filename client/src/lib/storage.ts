@@ -16,9 +16,9 @@ interface DatabaseState {
 
 const INITIAL_DATA: DatabaseState = {
   users: [
-    { id: 1, name: "Admin Alice", role: "admin" },
-    { id: 2, name: "Student Bob", role: "student" },
-    { id: 3, name: "Student Charlie", role: "student" },
+    { id: 1, username: "admin", password: "password123", name: "Admin Alice", role: "admin" },
+    { id: 2, username: "student", password: "password123", name: "Student Bob", role: "student" },
+    { id: 3, username: "charlie", password: "password123", name: "Student Charlie", role: "student" },
   ],
   activities: [
     { id: 1, name: "Varsity Soccer Tryouts", description: "Open tryouts for the varsity soccer team. Bring cleats and water.", date: new Date(Date.now() + 86400000 * 2).toISOString(), category: "sport" },
@@ -67,11 +67,14 @@ class LocalStorageDB {
     return this.delay(user);
   }
 
-  async login(userId: number) {
+  async login(username: string, password: string) {
     const db = this.getDb();
-    db.sessionUserId = userId;
+    const user = db.users.find(u => u.username === username && u.password === password);
+    if (!user) throw new Error("Invalid username or password");
+    
+    db.sessionUserId = user.id;
     this.saveDb(db);
-    return this.delay(db.users.find(u => u.id === userId)!);
+    return this.delay(user);
   }
 
   async logout() {
