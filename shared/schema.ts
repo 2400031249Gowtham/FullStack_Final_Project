@@ -1,39 +1,35 @@
-import { pgTable, text, serial, integer } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod";
+/**
+ * Shared type definitions — plain TypeScript, no backend dependencies.
+ * Used by the frontend localStorage-based storage layer.
+ */
 
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-  name: text("name").notNull(),
-  role: text("role").notNull(), // "admin" | "student"
-});
+// ─── Entity Types ──────────────────────────────────────────────────────────
 
-export const activities = pgTable("activities", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description").notNull(),
-  date: text("date").notNull(),
-  category: text("category").notNull(), // "club" | "sport" | "event"
-});
+export interface User {
+  id: number;
+  username: string;
+  password: string;
+  name: string;
+  role: string; // "admin" | "student"
+}
 
-export const registrations = pgTable("registrations", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  activityId: integer("activity_id").notNull(),
-  status: text("status").notNull(), // "registered" | "attended" | "cancelled"
-});
+export interface Activity {
+  id: number;
+  name: string;
+  description: string;
+  date: string;
+  category: string; // "club" | "sport" | "event"
+}
 
-export const insertUserSchema = createInsertSchema(users);
-export const insertActivitySchema = createInsertSchema(activities);
-export const insertRegistrationSchema = createInsertSchema(registrations);
+export interface Registration {
+  id: number;
+  userId: number;
+  activityId: number;
+  status: string; // "registered" | "attended" | "cancelled"
+}
 
-export type User = typeof users.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>;
+// ─── Insert Types (omit auto-generated id) ─────────────────────────────────
 
-export type Activity = typeof activities.$inferSelect;
-export type InsertActivity = z.infer<typeof insertActivitySchema>;
-
-export type Registration = typeof registrations.$inferSelect;
-export type InsertRegistration = z.infer<typeof insertRegistrationSchema>;
+export type InsertUser = Omit<User, "id">;
+export type InsertActivity = Omit<Activity, "id">;
+export type InsertRegistration = Omit<Registration, "id">;

@@ -6,6 +6,7 @@
 import { type User, type Activity, type Registration, type InsertActivity, type InsertRegistration } from "@shared/schema";
 
 const STORAGE_KEY = "student_portal_db";
+const DB_VERSION = "v2"; // bump this to force a full reset of localStorage
 
 interface DatabaseState {
   users: User[];
@@ -35,6 +36,15 @@ const INITIAL_DATA: DatabaseState = {
 class LocalStorageDB {
   private getDb(): DatabaseState {
     try {
+      // Version check: if version mismatch, reset everything cleanly
+      const storedVersion = localStorage.getItem(STORAGE_KEY + "_version");
+      if (storedVersion !== DB_VERSION) {
+        console.log(`[DB] Version mismatch (${storedVersion} → ${DB_VERSION}). Resetting data.`);
+        this.saveDb(INITIAL_DATA);
+        localStorage.setItem(STORAGE_KEY + "_version", DB_VERSION);
+        return INITIAL_DATA;
+      }
+
       const data = localStorage.getItem(STORAGE_KEY);
       if (!data) {
         this.saveDb(INITIAL_DATA);
@@ -49,6 +59,7 @@ class LocalStorageDB {
 
   private saveDb(state: DatabaseState) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(STORAGE_KEY + "_version", DB_VERSION);
   }
 
   // Simulate network delay
@@ -67,11 +78,22 @@ class LocalStorageDB {
     return this.delay(user);
   }
 
-  async login(username: string, password: string) {
+  async login(username: string, password: string): Promise<User>;
+  async login(userId: number): Promise<User>;
+  async login(usernameOrId: string | number, password?: string): Promise<User> {
     const db = this.getDb();
-    const user = db.users.find(u => u.username === username && u.password === password);
+    let user: User | undefined;
+
+    if (typeof usernameOrId === "number") {
+      // Session login by ID (used after signup)
+      user = db.users.find(u => u.id === usernameOrId);
+    } else {
+      // Credential login
+      user = db.users.find(u => u.username === usernameOrId && u.password === password);
+    }
+
     if (!user) throw new Error("Invalid username or password");
-    
+
     db.sessionUserId = user.id;
     this.saveDb(db);
     return this.delay(user);
@@ -104,7 +126,7 @@ class LocalStorageDB {
     const db = this.getDb();
     const index = db.activities.findIndex(a => a.id === id);
     if (index === -1) throw new Error("Activity not found");
-    
+
     db.activities[index] = { ...db.activities[index], ...updates };
     this.saveDb(db);
     return this.delay(db.activities[index]);
@@ -126,7 +148,7 @@ class LocalStorageDB {
 
   async createRegistration(registration: InsertRegistration) {
     const db = this.getDb();
-    
+
     // Check if already registered
     const exists = db.registrations.find(
       r => r.userId === registration.userId && r.activityId === registration.activityId
@@ -146,7 +168,7 @@ class LocalStorageDB {
     const db = this.getDb();
     const index = db.registrations.findIndex(r => r.id === id);
     if (index === -1) throw new Error("Registration not found");
-    
+
     db.registrations[index].status = status;
     this.saveDb(db);
     return this.delay(db.registrations[index]);

@@ -18,6 +18,17 @@ export function useCurrentUser() {
 export function useLogin() {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationFn: ({ username, password }: { username: string; password: string }) =>
+      localDb.login(username, password),
+    onSuccess: (user) => {
+      queryClient.setQueryData(["currentUser"], user);
+    },
+  });
+}
+
+export function useLoginById() {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: (userId: number) => localDb.login(userId),
     onSuccess: (user) => {
       queryClient.setQueryData(["currentUser"], user);
